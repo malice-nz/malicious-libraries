@@ -8,6 +8,9 @@ end;
 
 local Easing = malice'Easing';
 print(Easing.Linear(1))
+
+local Lucide = malice'Lucide';
+local GitHub = Lucide'github';
 ```
 
 *git.malice.nz is a redirect rule that redirects to this repo (easier)*
