@@ -1,5 +1,6 @@
 --# Richie #--
---? Sonner Component for richtext applications ?--
+--? RichText parser for Ronner ?--
+--? Modified by me, made by unknown ?--
 
 local TextService	= game:GetService("TextService");
 local Players		= game:GetService("Players");
@@ -576,3 +577,5 @@ function Richie.Render(Parent, Text, TextColour, MutedColour, FontSize, Font, Co
 
 	return Container
 end;
+
+return Richie
