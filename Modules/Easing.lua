@@ -1,82 +1,50 @@
 --# Easing #--
 --? Used for Animate and other ?--
---# Easing #--
 local Easing = {}
-
 do
-	local NEWTON_ITERATIONS				= 8;
-	local NEWTON_MIN_SLOPE				= 0.001;
-	local SUBDIVISION_PRECISION			= 0.0000001;
-	local SUBDIVISION_MAX_ITERATIONS	= 12;
-
-	local kSplineTable	= 11;
-	local kSampleStep	= 1.0 / (kSplineTable - 1.0);
-
-	local function A(a1, a2) return(1.0 - 3.0 * a2 + 3.0 * a1) end;
-	local function B(a1, a2) return(3.0 * a2 - 6.0 * a1) end;
-	local function C(a1) return(3.0 * a1) end;
-
-	local function Bezier(t, a1, a2)
-		return(((A(a1, a2) * t + B(a1, a2)) * t + C(a1)) * t);
-	end
-
-	local function Slope(t, a1, a2)
-		return(3.0 * A(a1, a2) * t * t + 2.0 * B(a1, a2) * t + C(a1));
-	end;
-
 	function Easing.CubicBezier(X1, Y1, X2, Y2)
-		local SampleValues = {};
+		if X1 == Y1 and X2 == Y2 then return function(T) return T end end
 
-		for I = 0, kSplineTable - 1 do
-			SampleValues[I]	= Bezier(I * kSampleStep, X1, X2)
-		end;
+		local Samples = 11
+		local Step = 1 / (Samples - 1)
+		local Cache = {}
 
-		local function TForX(X)
-			local IntervalStart	= 0.0;
-			local CurrentSample	= 1;
-			local LastSample	= kSplineTable - 1;
+		local Cx, Bx, Ax = 3 * X1, 3 * (X2 - X1) - 3 * X1, 1 - 3 * X2 + 3 * X1
+		local Cy, By, Ay = 3 * Y1, 3 * (Y2 - Y1) - 3 * Y1, 1 - 3 * Y2 + 3 * Y1
 
-			while(CurrentSample ~= LastSample and SampleValues[CurrentSample] <= X) do
-				IntervalStart	= IntervalStart + kSplineTable;
-				CurrentSample	= CurrentSample + 1;
+		local function SampleX(T) return ((Ax * T + Bx) * T + Cx) * T end
+		local function SampleY(T) return ((Ay * T + By) * T + Cy) * T end
+		local function SlopeX(T) return (3 * Ax * T + 2 * Bx) * T + Cx end
+
+		for I = 0, Samples - 1 do Cache[I] = SampleX(I * Step) end
+
+		local function Solve(X)
+			local Lo, Hi = 0, Samples - 2
+			while Lo <= Hi do
+				local Mid = math.floor((Lo + Hi) / 2)
+				if Cache[Mid] > X then Hi = Mid - 1 else Lo = Mid + 1 end
 			end
-			CurrentSample	= CurrentSample - 1;
+			local Idx = math.max(0, Lo - 1)
 
-			local Dist		= (X - SampleValues[CurrentSample]) / (SampleValues[CurrentSample + 1] - SampleValues[CurrentSample]);
-			local GuessForT	= IntervalStart + Dist * kSampleStep;
+			local T0 = Idx * Step
+			local D = Cache[Idx + 1] - Cache[Idx]
+			local T = D > 1e-9 and T0 + ((X - Cache[Idx]) / D) * Step or T0
 
-			local InitialSlope = Slope(GuessForT, X1, X2);
-			if(InitialSlope >= NEWTON_MIN_SLOPE) then
-				for _ = 1, NEWTON_ITERATIONS do
-					local CurrentSlope	= Slope(GuessForT, X1, X2);
-					if(math.abs(CurrentSlope) < 0.0000001) then break end;
-					local CurrentX	= Bezier(GuessForT, X1, X2) - X;
-					GuessForT		= GuessForT - CurrentX / CurrentSlope;
-				end
-				return (GuessForT);
-			elseif InitialSlope == 0.0 then
-				return (GuessForT);
-			else
-				local A = IntervalStart;
-				local B = IntervalStart + kSampleStep;
-				local CurrentX, CurrentT;
-				local I = 0;
-				repeat
-					CurrentT	= A + (B - A) / 2.0;
-					CurrentX	= Bezier(CurrentT, X1, X2) - X;
-					if(CurrentX > 0.0) then B = CurrentT else A = CurrentT end;
-					I	= I + 1;
-				until(math.abs(CurrentX) < SUBDIVISION_PRECISION or I >= SUBDIVISION_MAX_ITERATIONS)
-				return(CurrentT)
+			for _ = 1, 4 do
+				local Slope = SlopeX(T)
+				if math.abs(Slope) < 1e-7 then break end
+				T = T - (SampleX(T) - X) / Slope
 			end
+
+			return T
 		end
 
 		return function(X)
-			if(X == 0) then return 0 end;
-			if(X == 1) then return 1 end;
-			return(Bezier(TForX(X), Y1, Y2));
+			if X <= 0 then return 0 end
+			if X >= 1 then return 1 end
+			return SampleY(Solve(X))
 		end
-	end	
+	end
 end
 
 --# Easing Styles #--
