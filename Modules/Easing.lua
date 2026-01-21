@@ -122,3 +122,4 @@ Easing.Spring = function(Tension, Friction)
 		return Value;
 	end
 end
+return Easing
