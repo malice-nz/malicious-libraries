@@ -7,7 +7,7 @@ local malice = function(Module)
 end;
 
 local Easing = malice'Easing';
-Easing.Linear(1)
+print(Easing.Linear(1))
 ```
 
 *git.malice.nz is a redirect rule that redirects to this repo (easier)*
